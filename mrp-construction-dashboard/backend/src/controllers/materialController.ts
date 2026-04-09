@@ -34,7 +34,23 @@ export const updateMaterial = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const material = await Material.findByIdAndUpdate(req.params.id, req.body, {
+    // Whitelist allowed fields to prevent NoSQL injection via operator keys
+    const allowedFields = [
+      'name', 'category', 'requiredQuantity', 'availableQuantity',
+      'orderedQuantity', 'deliveredQuantity', 'unitCost', 'unit',
+      'supplier', 'deliveryDate', 'status',
+    ] as const;
+    type AllowedField = typeof allowedFields[number];
+    const sanitized = allowedFields.reduce<Partial<Record<AllowedField, unknown>>>(
+      (acc, key) => {
+        if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+          acc[key] = req.body[key];
+        }
+        return acc;
+      },
+      {}
+    );
+    const material = await Material.findByIdAndUpdate(req.params.id, sanitized, {
       new: true,
       runValidators: true,
     });
